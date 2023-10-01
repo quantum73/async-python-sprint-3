@@ -1,0 +1,33 @@
+[tool.mypy]
+exclude = [
+    'venv',
+    '.venv',
+    '.github',
+    'env',
+    '.env',
+    'tests',
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --tb=line -s -v -p no:cacheprovider"
+
+[tool.poetry]
+name = "async-python-sprint-3"
+version = "0.1.0"
+description = ""
+authors = ["Nikita Fomin <fominquant@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+mypy = "^1.5.1"
+flake8 = "^6.1.0"
+black = "^23.9.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
