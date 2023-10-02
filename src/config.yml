@@ -1,0 +1,22 @@
+logging:
+  version: 1
+  disable_existing_loggers: True
+  formatters:
+    console:
+      format: '%(asctime)s [%(levelname)s] %(message)s'
+      datefmt: '%H:%M:%S %d-%m-%Y'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: INFO
+      formatter: console
+      stream: ext://sys.stdout
+  root:
+    level: INFO
+    handlers: [console]
+
+server:
+  show_last_messages_count: 20
+  message_lifetime_seconds: 10
+  max_reports_count: 3
+  ban_lifetime_seconds: 14400
