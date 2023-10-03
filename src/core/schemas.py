@@ -4,9 +4,9 @@ from asyncio import StreamWriter, StreamReader
 from dataclasses import dataclass, field
 from datetime import datetime
 
-__all__ = ("User", "Message")
+__all__ = ("User", "Message", "Command")
 
-from config import DATE_FORMAT
+from config import DATE_FORMAT, MESSAGE_LIMIT
 
 
 def _set_idx() -> str:
@@ -14,13 +14,14 @@ def _set_idx() -> str:
 
 
 def _now_datetime() -> datetime:
-    return datetime.utcnow()
+    return datetime.now()
 
 
 @dataclass(slots=True, frozen=True)
 class Command:
     name: str
     arguments: tp.Sequence[tp.Any]
+    request: str
 
 
 @dataclass(slots=True)
@@ -28,12 +29,17 @@ class User:
     idx: str
     host: str
     port: int
-    reader: StreamReader | None = None
-    writer: StreamWriter | None = None
+    reader: StreamReader
+    writer: StreamWriter
 
     reports_count: int = 0
     is_banned: bool = field(init=False, default=False)
     banned_to: datetime | None = field(init=False, default=None)
+
+    message_limit: int = MESSAGE_LIMIT
+    is_chating_blocked: bool = field(init=False, default=False)
+    chating_blocked_to: datetime | None = field(init=False, default=None)
+
     last_exit: datetime | None = field(init=False, default=None)
 
     def _object_as_string(self) -> str:
@@ -44,11 +50,6 @@ class User:
 
     def __repr__(self) -> str:
         return self._object_as_string()
-
-    async def disconnect(self) -> None:
-        self.last_exit = datetime.utcnow()
-        if self.writer:
-            self.writer.close()
 
     def to_dict(self) -> tp.Mapping:
         data = {

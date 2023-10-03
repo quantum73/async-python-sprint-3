@@ -6,9 +6,14 @@ dummy_db = DummyDatabase()
 
 
 async def report(initiator: User, target_user_id: str):
+    if target_user_id is None:
+        initiator.writer.write("error".encode())
+        await initiator.writer.drain()
+        return
+
     target_user = dummy_db.users.get_by_id(idx=target_user_id)
     if target_user is None:
-        error_message = "User with %s id does not exists" % target_user_id
+        error_message = "User with %s id does not exists\n" % target_user_id
         initiator.writer.write(error_message.encode())
         await initiator.writer.drain()
 

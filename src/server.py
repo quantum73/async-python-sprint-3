@@ -6,14 +6,24 @@ import sys
 import typing as tp
 from asyncio.streams import StreamReader, StreamWriter
 from dataclasses import dataclass, field
+from datetime import datetime
 from logging.config import dictConfig
 
-import handlers
 import tasks
-from config import LOGGING_CONFIG
+from config import (
+    LOGGING_CONFIG,
+    BAN_MESSAGE_TEMPLATE,
+    BLOCK_CHATING_MESSAGE_TEMPLATE,
+    DATE_FORMAT,
+    SERVER_MESSAGE_TEMPLATE,
+)
 from core import DummyDatabase
-from core.schemas import Command
-from services import get_or_create_user_by_peer_name, send_start_message
+from core.schemas import Command, User
+from services import (
+    get_or_create_user_by_peer_name,
+    send_start_message,
+    create_message,
+)
 
 dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger()
@@ -24,8 +34,17 @@ class Server:
     host: str = "127.0.0.1"
     port: int = 8000
     on_startup_tasks: list[tp.Coroutine] = field(init=False, repr=False, default_factory=list)
-    routes: dict[str, tp.Callable] = field(init=False, repr=False, default_factory=dict)
     dummy_db: DummyDatabase = field(init=False, repr=False)
+
+    def _object_as_string(self) -> str:
+        now = datetime.now().strftime(DATE_FORMAT)
+        return "<Server(%s:%s)>[%s]" % (self.host, self.port, now)
+
+    def __str__(self) -> str:
+        return self._object_as_string()
+
+    def __repr__(self) -> str:
+        return self._object_as_string()
 
     def __post_init__(self):
         self.dummy_db = DummyDatabase()
@@ -38,11 +57,36 @@ class Server:
         sys.exit(0)
 
     @staticmethod
-    def request_to_command(request: bytes) -> Command:
-        decode_request = request.decode()
+    def request_to_command(raw_request: bytes) -> Command:
+        decode_request = raw_request.decode()
         request_elements = list(filter(lambda x: x.strip(), decode_request.strip().split()))
         command_name, *command_args = request_elements
-        return Command(name=command_name, arguments=command_args)
+        return Command(name=command_name, arguments=command_args, request=decode_request)
+
+    async def send_message_to_user(self, user: User, message: str) -> None:
+        server_message = SERVER_MESSAGE_TEMPLATE.foramt(server_obj=self, message=message)
+        user.writer.write(server_message.encode())
+        await user.writer.drain()
+
+    async def disconnect_user(self, user: User) -> None:
+        user.last_exit = datetime.now()
+        user.writer.close()
+
+    async def _user_can_send_message(self, user: User) -> bool:
+        if user.is_banned:
+            await self.send_message_to_user(
+                user=user,
+                message=BAN_MESSAGE_TEMPLATE.format(banned_to=user.banned_to),
+            )
+            return False
+        if user.is_chating_blocked:
+            await self.send_message_to_user(
+                user=user,
+                message=BLOCK_CHATING_MESSAGE_TEMPLATE.format(block_to=user.chating_blocked_to),
+            )
+            return False
+
+        return True
 
     async def connect(self, reader: StreamReader, writer: StreamWriter):
         peer_name = writer.get_extra_info("peername")
@@ -55,14 +99,21 @@ class Server:
             if not request:
                 break
 
+            # Command logic
             command = self.request_to_command(request)
-            handler = self.routes.get(command.name)
-            logger.info("handler: %s" % handler)
-            if handler:
-                await handler(user, *command.arguments)
+            if command.name.startswith("/"):
+                logger.info("command: %s" % command)
+                continue
+
+            # Messages logic
+            if not await self._user_can_send_message(user):
+                logger.info("%s banned or blocked sending messages" % user)
+                continue
+
+            await create_message(sender=user, content=command.request)
 
         logger.info("Stop serving %s and close connection", user)
-        await user.disconnect()
+        await self.disconnect_user(user)
 
     async def run(self) -> None:
         loop = asyncio.get_event_loop()
@@ -87,9 +138,6 @@ async def main() -> None:
     server.on_startup_tasks = [
         tasks.check_messages_lifetime(),
     ]
-    server.routes = {
-        "/report": handlers.report,
-    }
     await server.run()
 
 

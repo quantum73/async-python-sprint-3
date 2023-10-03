@@ -3,9 +3,9 @@ import logging
 from datetime import datetime, timedelta
 from logging.config import dictConfig
 
-from config import LOGGING_CONFIG, SHOW_LAST_MESSAGES_COUNT, MAX_REPORTS_COUNT, BAN_LIFETIME_SECONDS, DATE_FORMAT
+from config import LOGGING_CONFIG, SHOW_LAST_MESSAGES_COUNT, MAX_REPORTS_COUNT, CHATING_BLOCK_LIFETIME_SECONDS
 from core import DummyDatabase
-from core.schemas import User
+from core.schemas import User, Message
 
 dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger()
@@ -51,11 +51,30 @@ async def send_start_message(*, user_to: User) -> None:
         await user_to.writer.drain()
 
 
+async def decrease_user_messages_limit(user: User):
+    user.message_limit -= 1
+    if user.message_limit == 0:
+        user.is_chating_blocked = True
+        block_to = datetime.now() + timedelta(seconds=CHATING_BLOCK_LIFETIME_SECONDS)
+        user.chating_blocked_to = block_to
+        logger.info("%s has reached the message limit. Block chat to %s" % (user, block_to))
+
+
+async def create_message(sender: User, content: str) -> Message:
+    message = Message(sender=sender, content=content)
+    dummy_db.messages.add(message)
+    logger.info("Created Message[%s]" % message.idx)
+    await decrease_user_messages_limit(user=sender)
+    return message
+
+
 def report_on_user(user: User):
-    logger.info("Increase %s reports_count" % user)
     user.reports_count += 1
-    if user.reports_count >= MAX_REPORTS_COUNT:
-        banned_to = datetime.utcnow() + timedelta(seconds=BAN_LIFETIME_SECONDS)
-        user.is_banned = True
-        user.banned_to = banned_to
-        logger.info("Ban %s user to %s" % user, banned_to.strftime(DATE_FORMAT))
+    logger.info("Increase %s reports_count" % user)
+    logger.info("reports_count = %s" % user.reports_count)
+    logger.info("user.reports_count >= MAX_REPORTS_COUNT = %s" % user.reports_count >= MAX_REPORTS_COUNT)
+    # if user.reports_count >= MAX_REPORTS_COUNT:
+    #     banned_to = datetime.now() + timedelta(seconds=BAN_LIFETIME_SECONDS)
+    #     user.is_banned = True
+    #     user.banned_to = banned_to
+    #     logger.info("Ban %s user to %s" % user, banned_to.strftime(DATE_FORMAT))
