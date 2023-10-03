@@ -1,26 +1,18 @@
-import asyncio
-import functools
 import logging
 import typing as tp
-from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 from logging.config import dictConfig
 
 from config import LOGGING_CONFIG
+
+__all__ = ("DummyStorageProtocol", "Singleton", "get_now_with_delta")
 
 dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger()
 
 
-def sync_to_async(func: tp.Callable) -> tp.Callable:
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs) -> asyncio.Future:
-        loop = asyncio.get_running_loop()
-        func_with_kwargs = func
-        for key, val in kwargs.items():
-            func_with_kwargs = functools.partial(func_with_kwargs, key=val)
-        return loop.run_in_executor(ThreadPoolExecutor, func_with_kwargs, *args)
-
-    return wrapped
+def get_now_with_delta(seconds: int) -> datetime:
+    return datetime.now() + timedelta(seconds=seconds)
 
 
 class Singleton:
@@ -33,7 +25,7 @@ class Singleton:
 
 
 class DummyStorageProtocol(tp.Protocol):
-    def get_by_id(self, idx: tp.Any) -> None:
+    def get_by_id(self, idx: tp.Any) -> tp.Any:
         raise NotImplementedError
 
     def add(self, item: tp.Any) -> None:

@@ -17,8 +17,8 @@ logging:
 
 server:
   show_last_messages_count: 20
-  message_lifetime_seconds: 10
-  user_message_limit: 1
-  chating_block_lifetime_seconds: 10
+  message_lifetime_seconds: 3
+  user_message_limit: 20
+  chating_block_lifetime_seconds: 3600
   max_reports_count: 3
-  ban_lifetime_seconds: 14400
+  ban_lifetime_seconds: 3600

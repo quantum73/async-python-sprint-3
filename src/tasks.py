@@ -1,10 +1,11 @@
-import asyncio
 import logging
-from datetime import datetime, timedelta
 from logging.config import dictConfig
 
-from config import LOGGING_CONFIG, MESSAGE_LIFETIME_SECONDS
+from config import LOGGING_CONFIG, USER_MESSAGE_LIMIT
 from core import DummyDatabase
+from core.schemas import Message, User
+
+__all__ = ("remove_user_chating_block", "remove_user_ban", "remove_expired_message")
 
 dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger()
@@ -12,18 +13,19 @@ logger = logging.getLogger()
 dummy_db = DummyDatabase()
 
 
-async def check_messages_lifetime():
-    logger.info("Starting check_messages_lifetime task...")
-    loop = asyncio.get_running_loop()
-    while loop.is_running():
-        now = datetime.now()
-        all_messages = dummy_db.messages.get_all(limit=None)
-        expired_messages = list(
-            filter(lambda x: now >= x.created_at + timedelta(seconds=MESSAGE_LIFETIME_SECONDS), all_messages)
-        )
-        if expired_messages:
-            logger.info("Remove %s expired messages" % len(expired_messages))
-            for msg in expired_messages:
-                dummy_db.messages.delete(msg)
+def remove_user_chating_block(user: User) -> None:
+    user.message_limit = USER_MESSAGE_LIMIT
+    user.is_chating_blocked = False
+    user.chating_blocked_to = None
+    logger.info("Remove messaging block for %s" % user)
 
-        await asyncio.sleep(1)
+
+def remove_user_ban(user: User) -> None:
+    user.is_banned = False
+    user.banned_to = None
+    logger.info("%s ban is expired" % user)
+
+
+def remove_expired_message(message: Message) -> None:
+    logger.info("Delete expired Message<%s>" % message.idx)
+    dummy_db.messages.delete(message)

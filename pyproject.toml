@@ -6,6 +6,7 @@ exclude = [
     'env',
     '.env',
     'tests',
+    'config.yml',
 ]
 
 [tool.pytest.ini_options]

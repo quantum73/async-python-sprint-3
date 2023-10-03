@@ -1,11 +1,7 @@
 from pathlib import Path
 
 import yaml
-
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
+from yaml import Loader
 
 BASE_DIR = Path(__file__).parent
 config_path = BASE_DIR / "config.yml"
