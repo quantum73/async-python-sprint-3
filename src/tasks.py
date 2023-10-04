@@ -1,14 +1,12 @@
 import logging
-from logging.config import dictConfig
 
-from config import LOGGING_CONFIG, USER_MESSAGE_LIMIT
+from config import USER_MESSAGE_LIMIT
 from core import DummyDatabase
 from core.schemas import Message, User
 
 __all__ = ("remove_user_chating_block", "remove_user_ban", "remove_expired_message")
 
-dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 dummy_db = DummyDatabase()
 

@@ -1,24 +1,14 @@
 logging:
-  version: 1
-  disable_existing_loggers: True
-  formatters:
-    console:
-      format: '%(asctime)s [%(levelname)s] %(message)s'
-      datefmt: '%H:%M:%S %d-%m-%Y'
-  handlers:
-    console:
-      class: logging.StreamHandler
-      level: INFO
-      formatter: console
-      stream: ext://sys.stdout
-  root:
-    level: INFO
-    handlers: [console]
+  level: INFO
+  format: '%(asctime)s (%(name)s) [%(levelname)s] %(message)s'
+  datefmt: '%H:%M:%S %d-%m-%Y'
 
 server:
-  show_last_messages_count: 20
+  server_host: "127.0.0.1"
+  server_port: 8000
+  show_last_messages_count: 3
   message_lifetime_seconds: 3
-  user_message_limit: 20
-  chating_block_lifetime_seconds: 3600
-  max_reports_count: 3
-  ban_lifetime_seconds: 3600
+  user_message_limit: 5
+  chating_block_lifetime_seconds: 5
+  max_reports_count: 1
+  ban_lifetime_seconds: 3

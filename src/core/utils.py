@@ -1,14 +1,15 @@
 import logging
 import typing as tp
 from datetime import datetime, timedelta
-from logging.config import dictConfig
 
-from config import LOGGING_CONFIG
+__all__ = ("DummyStorageProtocol", "Singleton", "get_now_with_delta", "prepare_message")
 
-__all__ = ("DummyStorageProtocol", "Singleton", "get_now_with_delta")
+logger = logging.getLogger(__name__)
 
-dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger()
+
+def prepare_message(message: str) -> str:
+    message = message.rstrip()
+    return "{}\n".format(message)
 
 
 def get_now_with_delta(seconds: int) -> datetime:

@@ -2,10 +2,8 @@ import asyncio
 import hashlib
 import logging
 from asyncio import StreamWriter, StreamReader
-from logging.config import dictConfig
 
 from config import (
-    LOGGING_CONFIG,
     SHOW_LAST_MESSAGES_COUNT,
     MAX_REPORTS_COUNT,
     CHATING_BLOCK_LIFETIME_SECONDS,
@@ -13,49 +11,52 @@ from config import (
     BLOCK_CHATING_MESSAGE_TEMPLATE,
     BAN_LIFETIME_SECONDS,
     MESSAGE_LIFETIME_SECONDS,
+    NOT_CONNECTED_MESSAGE_TEMPLATE,
+    NO_MESSAGE_TEMPLATE,
 )
 from core import DummyDatabase
 from core.schemas import User, Message
-from core.utils import get_now_with_delta
+from core.utils import get_now_with_delta, prepare_message
 from tasks import remove_user_chating_block, remove_user_ban, remove_expired_message
 
-dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 dummy_db = DummyDatabase()
 
 
 async def send_message_to_user(user: User, message: str) -> None:
-    user.writer.write(f"{message}\n".encode())
+    message = prepare_message(message)
+    user.writer.write(message.encode())
     await user.writer.drain()
 
 
-async def user_can_send_message(user: User) -> bool:
+async def send_block_or_ban_message(user: User) -> None:
     if user.is_banned:
         await send_message_to_user(
             user=user,
             message=BAN_MESSAGE_TEMPLATE.format(banned_to=user.banned_to),
         )
-        return False
-    if user.is_chating_blocked:
+    elif user.is_chating_blocked:
         await send_message_to_user(
             user=user,
             message=BLOCK_CHATING_MESSAGE_TEMPLATE.format(block_to=user.chating_blocked_to),
         )
-        return False
 
-    return True
+
+async def send_not_connected_message(user: User) -> None:
+    if not user.is_connected:
+        await send_message_to_user(user=user, message=NOT_CONNECTED_MESSAGE_TEMPLATE)
 
 
 def create_user_id_by_peer_name(peer_name: tuple[str, int]) -> str:
-    logger.info("Create user id by peername")
     peer_name_to_bytes = str(peer_name).encode()
     user_id = hashlib.md5(peer_name_to_bytes).hexdigest()
     return user_id
 
 
-def get_or_create_user_by_peer_name(*, peer_name: tuple[str, int], reader: StreamReader, writer: StreamWriter) -> User:
-    logger.info("Create user id by peername")
+def get_or_create_user(*, reader: StreamReader, writer: StreamWriter) -> User:
+    peer_name = writer.get_extra_info("peername")
+    logger.info("Create user id by peername (%s)" % str(peer_name))
     user_id = create_user_id_by_peer_name(peer_name)
     logger.info("Check user in db")
     user = dummy_db.users.get_by_id(idx=user_id)
@@ -73,16 +74,20 @@ def get_or_create_user_by_peer_name(*, peer_name: tuple[str, int], reader: Strea
 
 
 async def send_start_message(*, user_to: User) -> None:
-    last_exit = user_to.last_exit
-    if last_exit:
-        logger.info("Get last messages from %s" % last_exit)
-        last_messages = dummy_db.messages.get_all_from_date(date_filter=last_exit)
+    last_status_request = user_to.last_status_request_at
+    if last_status_request:
+        logger.info("Get last messages from %s" % last_status_request)
+        last_messages = dummy_db.messages.get_all_from_date(date_filter=last_status_request)
     else:
         logger.info("Get last %s messages" % SHOW_LAST_MESSAGES_COUNT)
         last_messages = dummy_db.messages.get_all()
 
-    for message in last_messages:
-        await send_message_to_user(user_to, str(message))
+    if len(last_messages) == 0:
+        await send_message_to_user(user_to, NO_MESSAGE_TEMPLATE)
+        return
+
+    for message_obj in last_messages:
+        await send_message_to_user(user_to, repr(message_obj))
 
 
 async def decrease_user_messages_limit(user: User) -> None:
