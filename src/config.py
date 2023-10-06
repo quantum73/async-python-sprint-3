@@ -22,6 +22,7 @@ USER_NO_FOUND_MESSAGE_TEMPLATE = "[*] User with {user_id} id does not exists."
 
 DATE_FORMAT = config["logging"]["datefmt"]
 
+# Server
 server_config = config["server"]
 
 SERVER_HOST = server_config.get("SERVER_HOST", "127.0.0.1")
@@ -33,3 +34,15 @@ USER_MESSAGE_LIMIT = server_config.get("user_message_limit", 20)
 CHATING_BLOCK_LIFETIME_SECONDS = server_config.get("chating_block_lifetime_seconds", 3600)
 MAX_REPORTS_COUNT = server_config.get("max_reports_count", 3)
 BAN_LIFETIME_SECONDS = server_config.get("ban_lifetime_seconds", 14400)
+
+# Client
+CLIENT_HELP_MESSAGE = (
+    "\nAvailable commands:\n"
+    "/help - help command (no arguments)\n"
+    "/connect - connect to server (no arguments)\n"
+    "/send - send message to server (no arguments)\n"
+    "/status - get general chat status (no arguments)\n"
+    "/report - user report (arguments: <user_id:str>)\n"
+    "/exit - close client (no arguments)"
+)
+CLIENT_MESSAGE_TEMPLATE = "\n{}"

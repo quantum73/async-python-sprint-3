@@ -25,7 +25,7 @@ class Route:
 
 @dataclass(slots=True)
 class Command:
-    request: bytes = field(repr=False)
+    request: bytes | str = field(repr=False)
     name: str = field(init=False)
     arguments: tp.Sequence[tp.Any] = field(init=False, repr=False)
 
@@ -36,8 +36,11 @@ class Command:
         return " ".join(self.arguments)
 
     @staticmethod
-    def parse_request(raw_request: bytes) -> tuple[str, list[str]]:
-        decode_request = raw_request.decode()
+    def parse_request(raw_request: bytes | str) -> tuple[str, list[str]]:
+        if isinstance(raw_request, bytes):
+            decode_request = raw_request.decode()
+        else:
+            decode_request = raw_request
         strip_request = decode_request.strip()
         request_elements = list(filter(lambda x: x.strip(), strip_request.split()))
         if len(request_elements) > 1:
