@@ -6,8 +6,6 @@ import uuid
 from config import SERVER_HOST, SERVER_PORT, CLIENT_HELP_MESSAGE, CLIENT_MESSAGE_TEMPLATE
 from core.schemas import Command
 
-__all__ = ("Client",)
-
 """
 Приветствую, Матвей.
 Надеюсь в третий то раз все получится :D
