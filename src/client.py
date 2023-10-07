@@ -6,13 +6,6 @@ import uuid
 from config import SERVER_HOST, SERVER_PORT, CLIENT_HELP_MESSAGE, CLIENT_MESSAGE_TEMPLATE
 from core.schemas import Command
 
-"""
-Приветствую, Матвей.
-Надеюсь в третий то раз все получится :D
-Не стал особо париться и написал elif'ы, надеюсь ты пропустишь такое.
-Хотя я понимаю что не очень)
-"""
-
 
 class Client:
     def __init__(
